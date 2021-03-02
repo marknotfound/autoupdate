@@ -89,7 +89,10 @@ export class AutoUpdater {
 
   async update(pull: octokit.PullsUpdateResponseData): Promise<boolean> {
     const { ref } = pull.head;
-    ghCore.info(`Evaluating pull request #${pull.number}...`);
+    const { login } = pull.user;
+    const userOctokit: InstanceType<typeof GitHub> = github.getOctokit(
+      this.config.githubUserToken(login),
+    );
 
     const prNeedsUpdate = await this.prNeedsUpdate(pull);
     if (!prNeedsUpdate) {
@@ -123,7 +126,7 @@ export class AutoUpdater {
     }
 
     try {
-      await this.merge(mergeOpts);
+      await this.merge(mergeOpts, userOctokit);
     } catch (e) {
       ghCore.error(
         `Caught error running merge, skipping and continuing with remaining PRs`,
@@ -136,6 +139,10 @@ export class AutoUpdater {
   }
 
   async prNeedsUpdate(pull: octokit.PullsUpdateResponseData): Promise<boolean> {
+    const { login } = pull.user;
+    const userOctokit: InstanceType<typeof GitHub> = github.getOctokit(
+      this.config.githubUserToken(login),
+    );
     if (pull.merged === true) {
       ghCore.warning('Skipping pull request, already merged.');
       return false;
@@ -153,7 +160,7 @@ export class AutoUpdater {
       return false;
     }
 
-    const { data: comparison } = await this.octokit.repos.compareCommits({
+    const { data: comparison } = await userOctokit.repos.compareCommits({
       owner: pull.head.repo.owner.login,
       repo: pull.head.repo.name,
       // This base->head, head->base logic is intentional, we want
@@ -224,7 +231,7 @@ export class AutoUpdater {
 
     if (this.config.pullRequestFilter() === 'protected') {
       ghCore.info('Checking if this PR is against a protected branch.');
-      const { data: branch } = await this.octokit.repos.getBranch({
+      const { data: branch } = await userOctokit.repos.getBranch({
         owner: pull.head.repo.owner.login,
         repo: pull.head.repo.name,
         branch: pull.base.ref,
@@ -249,6 +256,7 @@ export class AutoUpdater {
 
   async merge(
     mergeOpts: octokit.RequestParameters & MergeOpts,
+    userOctokit: InstanceType<typeof GitHub>,
   ): Promise<boolean> {
     const sleep = (timeMs: number) => {
       return new Promise((resolve) => {
@@ -257,7 +265,7 @@ export class AutoUpdater {
     };
 
     const doMerge = async () => {
-      const mergeResp: octokit.OctokitResponse<any> = await this.octokit.repos.merge(
+      const mergeResp: octokit.OctokitResponse<any> = await userOctokit.repos.merge(
         mergeOpts,
       );
 

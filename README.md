@@ -1,5 +1,5 @@
 # autoupdate
-![Tests](https://github.com/chinthakagodawita/autoupdate/workflows/Tests/badge.svg?event=push) [![codecov](https://codecov.io/gh/chinthakagodawita/autoupdate/branch/master/graph/badge.svg)](https://codecov.io/gh/chinthakagodawita/autoupdate)
+![Tests](https://github.com/hellobaton/autoupdate/workflows/Tests/badge.svg?event=push) [![codecov](https://codecov.io/gh/hellobaton/autoupdate/branch/master/graph/badge.svg)](https://codecov.io/gh/hellobaton/autoupdate)
 
 **autoupdate** is a GitHub Action that auto-updates pull requests branches whenever changes land on their destination branch.
 
@@ -20,7 +20,7 @@ jobs:
     name: autoupdate
     runs-on: ubuntu-18.04
     steps:
-      - uses: docker://chinthakagodawita/autoupdate-action:v1
+      - uses: docker://hellobaton/autoupdate-action:v1
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 ```
@@ -73,7 +73,7 @@ jobs:
     name: autoupdate
     runs-on: ubuntu-18.04
     steps:
-      - uses: docker://chinthakagodawita/autoupdate-action:v1
+      - uses: docker://hellobaton/autoupdate-action:v1
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           DRY_RUN: "false"
@@ -88,7 +88,7 @@ jobs:
 
 ## Examples
 
-See [chinthakagodawita/autoupdate-test/pulls](https://github.com/chinthakagodawita/autoupdate-test/pulls?q=is%3Apr+is%3Aopen+sort%3Aupdated-desc) for a repository where autoupdate is enabled. This is currently configured to only run on PRs that have the `autoupdate` tag added to them.
+See [hellobaton/autoupdate-test/pulls](https://github.com/hellobaton/autoupdate-test/pulls?q=is%3Apr+is%3Aopen+sort%3Aupdated-desc) for a repository where autoupdate is enabled. This is currently configured to only run on PRs that have the `autoupdate` tag added to them.
 
 Here's a screenshot:
 
