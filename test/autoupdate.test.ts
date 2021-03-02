@@ -16,7 +16,7 @@ beforeEach(() => {
   jest.spyOn(config, 'githubToken').mockImplementation(() => 'test-token');
 });
 
-const owner = 'chinthakagodawita';
+const owner = 'marknotfound';
 const repo = 'not-a-real-repo';
 const base = 'master';
 const head = 'develop';

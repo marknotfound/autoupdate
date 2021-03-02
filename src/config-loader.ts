@@ -9,6 +9,10 @@ export class ConfigLoader {
     return this.getValue('GITHUB_TOKEN', true);
   }
 
+  githubUserToken(username: string): string {
+    return this.getValue(`TOKEN_${username.toUpperCase()}`, true);
+  }
+
   dryRun(): boolean {
     const val = this.getValue('DRY_RUN', false, 'false');
     return val === 'true';
