@@ -10,10 +10,8 @@ pushd "${SCRIPT_DIR}/.." > /dev/null
 
 set -x
 
-docker build -t "${REPO}:v1" .
-docker tag "${REPO}:v1" "${REPO}:latest"
-docker push "${REPO}:v1"
-docker push "${REPO}:latest"
+docker build -t "${REPO}:test" .
+docker push "${REPO}:test"
 
 set +x
 

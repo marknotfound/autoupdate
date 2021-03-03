@@ -5,11 +5,12 @@ import * as octokit from '@octokit/types';
 import { ConfigLoader } from './config-loader';
 
 interface MergeOpts {
-  owner: string;
-  repo: string;
-  base: string;
-  head: string;
-  commit_message?: string;
+  expected_head_sha: string;
+  mediaType: MediaType;
+}
+
+interface MediaType {
+  previews: Array<string>;
 }
 
 export class AutoUpdater {
@@ -89,15 +90,8 @@ export class AutoUpdater {
 
   async update(pull: octokit.PullsUpdateResponseData): Promise<boolean> {
     const { ref } = pull.head;
-    const { login } = pull.user;
 
-    ghCore.info(`Evaluating pull request #${pull.number}...`);
-
-    const userOctokit: InstanceType<typeof GitHub> = github.getOctokit(
-      this.config.githubUserToken(login),
-    );
-
-    const prNeedsUpdate = await this.prNeedsUpdate(pull, userOctokit);
+    const prNeedsUpdate = await this.prNeedsUpdate(pull);
     if (!prNeedsUpdate) {
       return false;
     }
@@ -115,21 +109,8 @@ export class AutoUpdater {
       return true;
     }
 
-    const mergeMsg = this.config.mergeMsg();
-    const mergeOpts: octokit.RequestParameters & MergeOpts = {
-      owner: pull.head.repo.owner.login,
-      repo: pull.head.repo.name,
-      // We want to merge the base branch into this one.
-      base: headRef,
-      head: baseRef,
-    };
-
-    if (mergeMsg !== null && mergeMsg.length > 0) {
-      mergeOpts.commit_message = mergeMsg;
-    }
-
     try {
-      await this.merge(mergeOpts, userOctokit);
+      await this.merge(pull);
     } catch (e) {
       ghCore.error(
         `Caught error running merge, skipping and continuing with remaining PRs`,
@@ -141,10 +122,11 @@ export class AutoUpdater {
     return true;
   }
 
-  async prNeedsUpdate(
-    pull: octokit.PullsUpdateResponseData,
-    userOctokit: InstanceType<typeof GitHub>,
-  ): Promise<boolean> {
+  async prNeedsUpdate(pull: octokit.PullsUpdateResponseData): Promise<boolean> {
+    const { login } = pull.user;
+    const userOctokit: InstanceType<typeof GitHub> = github.getOctokit(
+      this.config.githubUserToken(login),
+    );
     if (pull.merged === true) {
       ghCore.warning('Skipping pull request, already merged.');
       return false;
@@ -256,30 +238,44 @@ export class AutoUpdater {
     return true;
   }
 
-  async merge(
-    mergeOpts: octokit.RequestParameters & MergeOpts,
-    userOctokit: InstanceType<typeof GitHub>,
-  ): Promise<boolean> {
+  async merge(pull: octokit.PullsUpdateResponseData): Promise<boolean> {
     const sleep = (timeMs: number) => {
       return new Promise((resolve) => {
         setTimeout(resolve, timeMs);
       });
     };
 
+    const mediaType: MediaType = {
+      previews: ['lydian'],
+    };
+
+    const mergeOpts: octokit.RequestParameters & MergeOpts = {
+      expected_head_sha: pull.head.sha,
+      mediaType: mediaType,
+    };
+
+    const mergeOptsStr = JSON.stringify(mergeOpts);
+
+    ghCore.info(`Will attempt merge with mergeOpts: ${mergeOptsStr}`);
+
     const doMerge = async () => {
-      const mergeResp: octokit.OctokitResponse<any> = await userOctokit.repos.merge(
+      const { login: owner } = pull.base.repo.owner;
+      const { name: repo } = pull.base.repo;
+      const { number: pullNumber } = pull;
+
+      // See https://docs.github.com/en/rest/reference/pulls#update-a-pull-request-branch
+      const url = `PUT /repos/${owner}/${repo}/pulls/${pullNumber}/update-branch`;
+      const mergeResp: octokit.OctokitResponse<any> = await this.octokit.request(
+        url,
         mergeOpts,
       );
 
       // See https://developer.github.com/v3/repos/merging/#perform-a-merge
       const { status } = mergeResp;
-      if (status === 200) {
+
+      if (status === 202) {
         ghCore.info(
-          `Branch update successful, new branch HEAD: ${mergeResp.data.sha}.`,
-        );
-      } else if (status === 204) {
-        ghCore.info(
-          'Branch update not required, branch is already up-to-date.',
+          `Branch update accepted for pull request: ${mergeResp.url}`,
         );
       }
 
@@ -298,19 +294,21 @@ export class AutoUpdater {
         await doMerge();
         break;
       } catch (e) {
+        const mergeConflictMessage = 'merge conflict between base and head';
         if (
-          e.message === 'Merge conflict' &&
+          e.message === mergeConflictMessage &&
           mergeConflictAction === 'ignore'
         ) {
           ghCore.info('Merge conflict detected, skipping update.');
           break;
         }
-        if (e.message === 'Merge conflict') {
+        if (e.message === mergeConflictMessage) {
           ghCore.error('Merge conflict error trying to update branch');
           throw e;
         }
 
         ghCore.error(`Caught error trying to update branch: ${e.message}`);
+        ghCore.error(`Exception: ${e}`);
 
         if (retries < retryCount) {
           ghCore.info(
