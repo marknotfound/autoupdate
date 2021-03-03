@@ -90,11 +90,14 @@ export class AutoUpdater {
   async update(pull: octokit.PullsUpdateResponseData): Promise<boolean> {
     const { ref } = pull.head;
     const { login } = pull.user;
+
+    ghCore.info(`Evaluating pull request #${pull.number}...`);
+
     const userOctokit: InstanceType<typeof GitHub> = github.getOctokit(
       this.config.githubUserToken(login),
     );
 
-    const prNeedsUpdate = await this.prNeedsUpdate(pull);
+    const prNeedsUpdate = await this.prNeedsUpdate(pull, userOctokit);
     if (!prNeedsUpdate) {
       return false;
     }
@@ -138,11 +141,10 @@ export class AutoUpdater {
     return true;
   }
 
-  async prNeedsUpdate(pull: octokit.PullsUpdateResponseData): Promise<boolean> {
-    const { login } = pull.user;
-    const userOctokit: InstanceType<typeof GitHub> = github.getOctokit(
-      this.config.githubUserToken(login),
-    );
+  async prNeedsUpdate(
+    pull: octokit.PullsUpdateResponseData,
+    userOctokit: InstanceType<typeof GitHub>,
+  ): Promise<boolean> {
     if (pull.merged === true) {
       ghCore.warning('Skipping pull request, already merged.');
       return false;

@@ -4,6 +4,7 @@ if ('GITHUB_TOKEN' in process.env) {
   delete process.env.GITHUB_TOKEN;
 }
 
+import * as github from '@actions/github';
 import nock from 'nock';
 import config from '../src/config-loader';
 import { AutoUpdater } from '../src/autoupdater';
@@ -14,9 +15,14 @@ jest.mock('../src/config-loader');
 beforeEach(() => {
   jest.resetAllMocks();
   jest.spyOn(config, 'githubToken').mockImplementation(() => 'test-token');
+  jest
+    .spyOn(config, 'githubUserToken')
+    .mockImplementation(() => 'test-user-token');
 });
 
+const userOctokit = github.getOctokit('test-user-token');
 const owner = 'marknotfound';
+const forkOwner = 'forkmarknotfound';
 const repo = 'not-a-real-repo';
 const base = 'master';
 const head = 'develop';
@@ -58,6 +64,9 @@ const validPull = {
       },
     },
   },
+  user: {
+    login: forkOwner,
+  },
 };
 const clonePull = () => JSON.parse(JSON.stringify(validPull));
 
@@ -70,6 +79,7 @@ describe('test `prNeedsUpdate`', () => {
     const updater = new AutoUpdater(config, {});
     const needsUpdate = await updater.prNeedsUpdate(
       (pull as unknown) as PullsUpdateResponseData,
+      userOctokit,
     );
     expect(needsUpdate).toEqual(false);
   });
@@ -83,6 +93,7 @@ describe('test `prNeedsUpdate`', () => {
     const updater = new AutoUpdater(config, {});
     const needsUpdate = await updater.prNeedsUpdate(
       (pull as unknown) as PullsUpdateResponseData,
+      userOctokit,
     );
     expect(needsUpdate).toEqual(false);
   });
@@ -98,6 +109,7 @@ describe('test `prNeedsUpdate`', () => {
     const updater = new AutoUpdater(config, {});
     const needsUpdate = await updater.prNeedsUpdate(
       (pull as unknown) as PullsUpdateResponseData,
+      userOctokit,
     );
     expect(needsUpdate).toEqual(false);
   });
@@ -112,6 +124,7 @@ describe('test `prNeedsUpdate`', () => {
     const updater = new AutoUpdater(config, {});
     const needsUpdate = await updater.prNeedsUpdate(
       (validPull as unknown) as PullsUpdateResponseData,
+      userOctokit,
     );
 
     expect(needsUpdate).toEqual(false);
@@ -131,6 +144,7 @@ describe('test `prNeedsUpdate`', () => {
     const updater = new AutoUpdater(config, {});
     const needsUpdate = await updater.prNeedsUpdate(
       (validPull as unknown) as PullsUpdateResponseData,
+      userOctokit,
     );
 
     expect(needsUpdate).toEqual(true);
@@ -162,7 +176,7 @@ describe('test `prNeedsUpdate`', () => {
         name: 'dependencies',
       },
     ];
-    const needsUpdate = await updater.prNeedsUpdate(pull);
+    const needsUpdate = await updater.prNeedsUpdate(pull, userOctokit);
 
     expect(needsUpdate).toEqual(false);
     expect(scope.isDone()).toEqual(true);
@@ -188,6 +202,7 @@ describe('test `prNeedsUpdate`', () => {
     const updater = new AutoUpdater(config, {});
     const needsUpdate = await updater.prNeedsUpdate(
       (validPull as unknown) as PullsUpdateResponseData,
+      userOctokit,
     );
 
     expect(needsUpdate).toEqual(false);
@@ -211,7 +226,7 @@ describe('test `prNeedsUpdate`', () => {
     const updater = new AutoUpdater(config, {});
     const pull = clonePull();
     pull.labels = [];
-    const needsUpdate = await updater.prNeedsUpdate(pull);
+    const needsUpdate = await updater.prNeedsUpdate(pull, userOctokit);
 
     expect(needsUpdate).toEqual(false);
     expect(scope.isDone()).toEqual(true);
@@ -234,6 +249,7 @@ describe('test `prNeedsUpdate`', () => {
     const updater = new AutoUpdater(config, {});
     const needsUpdate = await updater.prNeedsUpdate(
       (validPull as unknown) as PullsUpdateResponseData,
+      userOctokit,
     );
 
     expect(needsUpdate).toEqual(false);
@@ -262,7 +278,7 @@ describe('test `prNeedsUpdate`', () => {
         name: 'three',
       },
     ];
-    const needsUpdate = await updater.prNeedsUpdate(pull);
+    const needsUpdate = await updater.prNeedsUpdate(pull, userOctokit);
 
     expect(needsUpdate).toEqual(true);
     expect(scope.isDone()).toEqual(true);
@@ -287,6 +303,7 @@ describe('test `prNeedsUpdate`', () => {
     const updater = new AutoUpdater(config, {});
     const needsUpdate = await updater.prNeedsUpdate(
       (validPull as unknown) as PullsUpdateResponseData,
+      userOctokit,
     );
 
     expect(needsUpdate).toEqual(true);
@@ -315,6 +332,7 @@ describe('test `prNeedsUpdate`', () => {
     const updater = new AutoUpdater(config, {});
     const needsUpdate = await updater.prNeedsUpdate(
       (validPull as unknown) as PullsUpdateResponseData,
+      userOctokit,
     );
 
     expect(needsUpdate).toEqual(false);
@@ -337,6 +355,7 @@ describe('test `prNeedsUpdate`', () => {
     const updater = new AutoUpdater(config, {});
     const needsUpdate = await updater.prNeedsUpdate(
       (validPull as unknown) as PullsUpdateResponseData,
+      userOctokit,
     );
 
     expect(needsUpdate).toEqual(true);
@@ -479,9 +498,16 @@ describe('test `update`', () => {
       head: validPull.base.ref,
     };
 
+    const expectedOctokit = {
+      actions: expect.any(Object),
+    };
+
     expect(needsUpdate).toEqual(true);
     expect(updateSpy).toHaveBeenCalledTimes(1);
-    expect(mergeSpy).toHaveBeenCalledWith(expectedMergeOpts);
+    expect(mergeSpy).toHaveBeenCalledWith(
+      expectedMergeOpts,
+      expect.objectContaining(expectedOctokit),
+    );
   });
 
   test('merge with no message', async () => {
@@ -501,9 +527,16 @@ describe('test `update`', () => {
       head: validPull.base.ref,
     };
 
+    const expectedOctokit = {
+      actions: expect.any(Object),
+    };
+
     expect(needsUpdate).toEqual(true);
     expect(updateSpy).toHaveBeenCalledTimes(1);
-    expect(mergeSpy).toHaveBeenCalledWith(expectedMergeOpts);
+    expect(mergeSpy).toHaveBeenCalledWith(
+      expectedMergeOpts,
+      expect.objectContaining(expectedOctokit)
+    );
   });
 });
 
@@ -550,9 +583,11 @@ describe('test `merge`', () => {
         .reply(responseTest.code);
 
       if (responseTest.success) {
-        await updater.merge(mergeOpts);
+        await updater.merge(mergeOpts, userOctokit);
       } else {
-        await expect(updater.merge(mergeOpts)).rejects.toThrowError();
+        await expect(
+          updater.merge(mergeOpts, userOctokit)
+        ).rejects.toThrowError();
       }
 
       expect(scope.isDone()).toEqual(true);
@@ -577,7 +612,7 @@ describe('test `merge`', () => {
       scopes.push(scope);
     }
 
-    await expect(updater.merge(mergeOpts)).rejects.toThrowError();
+    await expect(updater.merge(mergeOpts, userOctokit)).rejects.toThrowError();
 
     for (const scope of scopes) {
       expect(scope.isDone()).toEqual(true);
@@ -599,7 +634,7 @@ describe('test `merge`', () => {
         message: 'Merge conflict',
       });
 
-    await updater.merge(mergeOpts);
+    await updater.merge(mergeOpts, userOctokit);
 
     expect(scope.isDone()).toEqual(true);
   });
@@ -619,7 +654,7 @@ describe('test `merge`', () => {
         message: 'Merge conflict',
       });
 
-    await expect(updater.merge(mergeOpts)).rejects.toThrowError(
+    await expect(updater.merge(mergeOpts, userOctokit)).rejects.toThrowError(
       'Merge conflict',
     );
 
@@ -649,6 +684,9 @@ describe('test `merge`', () => {
               login: owner,
             },
           },
+        },
+        user: {
+          login: forkOwner,
         },
       });
     }

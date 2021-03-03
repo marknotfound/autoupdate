@@ -7,6 +7,15 @@ const tests = [
     required: true,
     default: null,
     type: 'string',
+    args: [],
+  },
+  {
+    name: 'githubUserToken',
+    envVar: 'TOKEN_MARKNOTFOUND',
+    required: true,
+    default: null,
+    type: 'string',
+    args: ['marknotfound'],
   },
   {
     name: 'dryRun',
@@ -14,6 +23,7 @@ const tests = [
     required: false,
     default: false,
     type: 'bool',
+    args: [],
   },
   {
     name: 'pullRequestFilter',
@@ -21,6 +31,7 @@ const tests = [
     required: false,
     default: 'all',
     type: 'string',
+    args: [],
   },
   {
     name: 'pullRequestLabels',
@@ -28,6 +39,7 @@ const tests = [
     required: false,
     default: [],
     type: 'list',
+    args: [],
   },
   {
     name: 'excludedLabels',
@@ -35,6 +47,7 @@ const tests = [
     required: false,
     default: [],
     type: 'list',
+    args: [],
   },
   {
     name: 'mergeMsg',
@@ -42,6 +55,7 @@ const tests = [
     required: false,
     default: null,
     type: 'string',
+    args: [],
   },
   {
     name: 'conflictMsg',
@@ -49,6 +63,7 @@ const tests = [
     required: false,
     default: null,
     type: 'string',
+    args: [],
   },
   {
     name: 'retryCount',
@@ -56,6 +71,7 @@ const tests = [
     required: false,
     default: 5,
     type: 'int',
+    args: [],
   },
   {
     name: 'retrySleep',
@@ -63,6 +79,7 @@ const tests = [
     required: false,
     default: 300,
     type: 'int',
+    args: [],
   },
   {
     name: 'mergeConflictAction',
@@ -70,6 +87,7 @@ const tests = [
     required: false,
     default: 'fail',
     type: 'string',
+    args: [],
   },
 ];
 
@@ -109,7 +127,7 @@ for (const testDef of tests) {
     const config = new ConfigLoader();
     // Ignore noImplicitAny so we can invoke the function by string index.
     // @ts-ignore
-    const value = config[testDef.name]();
+    const value = config[testDef.name](...testDef.args);
     expect(value).toEqual(expectedValue);
 
     // Restore environment.
@@ -122,7 +140,7 @@ for (const testDef of tests) {
       expect(() => {
         // Ignore noImplicitAny so we can invoke the function by string index.
         // @ts-ignore
-        config[testDef.name]();
+        config[testDef.name](...testDef.args);
       }).toThrowError(
         `Environment variable '${testDef.envVar}' was not provided, please define it and try again.`,
       );
