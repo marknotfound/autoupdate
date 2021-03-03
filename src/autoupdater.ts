@@ -294,20 +294,21 @@ export class AutoUpdater {
         await doMerge();
         break;
       } catch (e) {
+        const mergeConflictMessage = 'merge conflict between base and head';
         if (
-          e.message === 'Merge conflict' &&
+          e.message === mergeConflictMessage &&
           mergeConflictAction === 'ignore'
         ) {
           ghCore.info('Merge conflict detected, skipping update.');
           break;
         }
-        if (e.message === 'Merge conflict') {
+        if (e.message === mergeConflictMessage) {
           ghCore.error('Merge conflict error trying to update branch');
           throw e;
         }
 
         ghCore.error(`Caught error trying to update branch: ${e.message}`);
-        ghCore.error(`Exception: ${JSON.stringify(e)}`);
+        ghCore.error(`Exception: ${e}`);
 
         if (retries < retryCount) {
           ghCore.info(
