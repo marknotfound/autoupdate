@@ -114,10 +114,10 @@ export class AutoUpdater {
 
     const mergeMsg = this.config.mergeMsg();
     const mergeOpts: octokit.RequestParameters & MergeOpts = {
-      owner: pull.head.repo.owner.login,
-      repo: pull.head.repo.name,
+      owner: pull.base.repo.owner.login,
+      repo: pull.base.repo.name,
       // We want to merge the base branch into this one.
-      base: headRef,
+      base: `${pull.head.repo.owner.login}:${headRef}`,
       head: baseRef,
     };
 
