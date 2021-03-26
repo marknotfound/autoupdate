@@ -124,6 +124,12 @@ export class AutoUpdater {
 
   async prNeedsUpdate(pull: octokit.PullsUpdateResponseData): Promise<boolean> {
     const { login } = pull.user;
+
+    if (login.toUpperCase() === 'DEPENDABOT[BOT]') {
+      // Sorry dependabot, we can't update your PRs!
+      return false;
+    }
+
     const userOctokit: InstanceType<typeof GitHub> = github.getOctokit(
       this.config.githubUserToken(login),
     );
