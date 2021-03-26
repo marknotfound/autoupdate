@@ -123,10 +123,6 @@ export class AutoUpdater {
   }
 
   async prNeedsUpdate(pull: octokit.PullsUpdateResponseData): Promise<boolean> {
-    const { login } = pull.user;
-    const userOctokit: InstanceType<typeof GitHub> = github.getOctokit(
-      this.config.githubUserToken(login),
-    );
     if (pull.merged === true) {
       ghCore.warning('Skipping pull request, already merged.');
       return false;
@@ -144,7 +140,7 @@ export class AutoUpdater {
       return false;
     }
 
-    const { data: comparison } = await userOctokit.repos.compareCommits({
+    const { data: comparison } = await this.octokit.repos.compareCommits({
       owner: pull.head.repo.owner.login,
       repo: pull.head.repo.name,
       // This base->head, head->base logic is intentional, we want
@@ -215,7 +211,7 @@ export class AutoUpdater {
 
     if (this.config.pullRequestFilter() === 'protected') {
       ghCore.info('Checking if this PR is against a protected branch.');
-      const { data: branch } = await userOctokit.repos.getBranch({
+      const { data: branch } = await this.octokit.repos.getBranch({
         owner: pull.head.repo.owner.login,
         repo: pull.head.repo.name,
         branch: pull.base.ref,
